@@ -1,4 +1,9 @@
 module Main where
 
+import Parser
+import System.Environment
+
 main :: IO ()
-main = putStrLn "lispy"
+main = do
+  args <- getArgs
+  putStrLn (readExpr (head args))
