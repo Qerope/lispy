@@ -6,4 +6,4 @@ import System.Environment
 main :: IO ()
 main = do
   args <- getArgs
-  putStrLn (readExpr (head args))
+  print (readExpr (head args))

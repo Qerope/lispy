@@ -31,10 +31,28 @@ parseAtom = do
 parseNumber :: Parser LispVal
 parseNumber = Number . read <$> many1 digit
 
-parseExpr :: Parser LispVal
-parseExpr = parseAtom <|> parseString <|> parseNumber
+parseList :: Parser LispVal
+parseList = List <$> sepBy parseExpr spaces
 
-readExpr :: String -> String
+parseDottedList :: Parser LispVal
+parseDottedList = do
+  h <- endBy parseExpr spaces
+  t <- char '.' >> spaces >> parseExpr
+  return $ DottedList h t
+
+parseQuoted :: Parser LispVal
+parseQuoted = do
+  _ <- char '\''
+  x <- parseExpr
+  return $ List [Atom "quote", x]
+
+parseExpr :: Parser LispVal
+parseExpr = try parseNumber <|> parseAtom <|> parseString <|> parseQuoted
+  <|> do _ <- char '('
+         x <- try parseList <|> parseDottedList
+         _ <- char ')'
+         return x
+readExpr :: String -> LispVal
 readExpr input = case parse parseExpr "lisp" input of
-  Left err -> "No match: " ++ show err
-  Right _ -> "Found value"
+  Left err -> String $ "No match: " ++ show err
+  Right val -> val
