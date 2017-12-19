@@ -6,6 +6,7 @@ data LispVal = Atom String
              | Number Integer
              | String String
              | Bool Bool
+             | PrimitiveFunc ([LispVal] -> ThrowsError LispVal)
 
 showVal :: LispVal -> String
 showVal (String s) = "\"" ++ s ++ "\""
@@ -15,6 +16,7 @@ showVal (Bool True) = "#t"
 showVal (Bool False) = "#f"
 showVal (List xs) = "(" ++ unwordsList xs ++ ")"
 showVal (DottedList h t) = "(" ++ unwordsList h ++ " . " ++ showVal t ++ ")"
+showVal (PrimitiveFunc _) = "<primitive>"
 
 unwordsList :: [LispVal] -> String
 unwordsList = unwords . map showVal
