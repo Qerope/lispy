@@ -1,30 +1,38 @@
 module Eval (eval) where
 
+import Control.Monad.Except
+
 import Types
 
-eval :: LispVal -> LispVal
-eval val@(String _) = val
-eval val@(Number _) = val
-eval val@(Bool _) = val
-eval (List [Atom "quote", val]) = val
-eval (List (Atom func : args)) = apply func $ map eval args
-eval _ = String "unsupported"
+eval :: LispVal -> ThrowsError LispVal
+eval val@(String _) = return val
+eval val@(Number _) = return val
+eval val@(Bool _) = return val
+eval (List [Atom "quote", val]) = return val
+eval (List (Atom func : args)) = mapM eval args >>= apply func
+eval badForm = throwError $ BadSpecialForm "Unrecognized special form" badForm
 
-apply :: String -> [LispVal] -> LispVal
-apply func args = maybe (Bool False) ($ args) $ lookup func primitives
+apply :: String -> [LispVal] -> ThrowsError LispVal
+apply func args =
+  maybe (throwError $ NotFunction "Unrecognized primitive function" func)
+        ($ args)
+        (lookup func primitives)
 
-primitives :: [(String, [LispVal] -> LispVal)]
-primitives = [("+", numericBinop (+)),
-              ("-", numericBinop (-)),
-              ("*", numericBinop (*)),
-              ("/", numericBinop div),
-              ("mod", numericBinop mod),
-              ("quotient", numericBinop quot),
-              ("remainder", numericBinop rem)]
+primitives :: [(String, [LispVal] -> ThrowsError LispVal)]
+primitives = [ ("+", numericBinop (+))
+             , ("-", numericBinop (-))
+             , ("*", numericBinop (*))
+             , ("/", numericBinop div)
+             , ("mod", numericBinop mod)
+             , ("quotient", numericBinop quot)
+             , ("remainder", numericBinop rem)
+             ]
 
-numericBinop :: (Integer -> Integer -> Integer) -> [LispVal] -> LispVal
-numericBinop op params = Number $ foldl1 op $ map unpackNum params
+numericBinop :: (Integer -> Integer -> Integer) -> [LispVal] -> ThrowsError LispVal
+numericBinop _ [] = throwError $ NumArgs 2 []
+numericBinop _ singleVal@[_] = throwError $ NumArgs 2 singleVal
+numericBinop op params = Number . foldl1 op <$> mapM unpackNum params
 
-unpackNum :: LispVal -> Integer
-unpackNum (Number n) = n
-unpackNum _ = 0
+unpackNum :: LispVal -> ThrowsError Integer
+unpackNum (Number n) = return n
+unpackNum notNum = throwError $ TypeMismatch "number" notNum

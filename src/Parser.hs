@@ -52,7 +52,10 @@ parseExpr = try parseNumber <|> parseAtom <|> parseString <|> parseQuoted
          x <- try parseList <|> parseDottedList
          _ <- char ')'
          return x
-readExpr :: String -> LispVal
-readExpr input = case parse parseExpr "lisp" input of
-  Left err -> String $ "No match: " ++ show err
-  Right val -> val
+readOrThrow :: Parser a -> String -> ThrowsError a
+readOrThrow p input = case parse p "lisp" input of
+  Left err -> throwError $ Parser err
+  Right val -> return val
+
+readExpr :: String -> ThrowsError LispVal
+readExpr = readOrThrow parseExpr
