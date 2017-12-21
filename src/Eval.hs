@@ -37,6 +37,11 @@ primitives = [ ("+", numericBinop (+))
              , ("string=?", strBoolBinop (==))
              , ("string<?", strBoolBinop (<))
              , ("string>?", strBoolBinop (>))
+             , ("car", car)
+             , ("cdr", cdr)
+             , ("cons", cons)
+             , ("eqv?", eqv)
+             , ("equal?", eqv)
              ]
 
 numericBinop :: (Integer -> Integer -> Integer) -> [LispVal] -> ThrowsError LispVal
@@ -73,3 +78,36 @@ unpackStr notString = throwError $ TypeMismatch "string" notString
 unpackBool :: LispVal -> ThrowsError Bool
 unpackBool (Bool b) = return b
 unpackBool notBool = throwError $ TypeMismatch "boolean" notBool
+
+car :: [LispVal] -> ThrowsError LispVal
+car [List (x : _)] = return x
+car [DottedList (x : _) _] = return x
+car [badArg] = throwError $ TypeMismatch "pair" badArg
+car badArgList = throwError $ NumArgs 1 badArgList
+
+cdr :: [LispVal] -> ThrowsError LispVal
+cdr [List (_ : xs)] = return $ List xs
+cdr [DottedList [_] x] = return x
+cdr [DottedList (_ : xs) x] = return $ DottedList xs x
+cdr [badArg] = throwError $ TypeMismatch "pair" badArg
+cdr badArgList = throwError $ NumArgs 1 badArgList
+
+cons :: [LispVal] -> ThrowsError LispVal
+cons [x, List []] = return $ List [x]
+cons [x, List xs] = return $ List (x : xs)
+cons [x, DottedList xs xlast] = return $ DottedList (x : xs) xlast
+cons [x, y] = return $ DottedList [x] y
+cons badArgList = throwError $ NumArgs 2 badArgList
+
+eqv :: [LispVal] -> ThrowsError LispVal
+eqv [Bool a, Bool b] = return $ Bool (a == b)
+eqv [Number a, Number b] = return $ Bool (a == b)
+eqv [String a, String b] = return $ Bool (a == b)
+eqv [Atom a, Atom b] = return $ Bool (a == b)
+eqv [List a, List b] = do
+  rs <- mapM (\(x, y) -> eqv [x, y]) (zip a b)
+  return $ Bool (length a == length b && all isTrue rs)
+  where isTrue (Bool True) = True
+        isTrue _ = False
+eqv [_, _] = return $ Bool False
+eqv badArgList = throwError $ NumArgs 2 badArgList
