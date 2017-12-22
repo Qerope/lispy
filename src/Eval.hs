@@ -9,6 +9,18 @@ eval val@(String _) = return val
 eval val@(Number _) = return val
 eval val@(Bool _) = return val
 eval (List [Atom "quote", val]) = return val
+eval (List [Atom "if", predicate, conseq, alt]) = do
+  result <- eval predicate
+  case result of
+    Bool False -> eval alt
+    _ -> eval conseq
+eval form@(List (Atom "cond" : clauses)) =
+  if null clauses
+    then throwError $ BadSpecialForm "no true clause in cond expression" form
+    else case head clauses of
+      List [Atom "else", expr] -> eval expr
+      List [test, expr] -> eval $ List [Atom "if", test, expr, List (Atom "cond" : tail clauses)]
+      _ -> throwError $ BadSpecialForm "ill-formed cond expression" form
 eval (List (Atom func : args)) = mapM eval args >>= apply func
 eval badForm = throwError $ BadSpecialForm "Unrecognized special form" badForm
 
