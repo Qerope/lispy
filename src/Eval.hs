@@ -34,10 +34,10 @@ primitives :: [(String, [LispVal] -> ThrowsError LispVal)]
 primitives = [ ("+", numericBinop (+))
              , ("-", numericBinop (-))
              , ("*", numericBinop (*))
-             , ("/", numericBinop div)
-             , ("mod", numericBinop mod)
-             , ("quotient", numericBinop quot)
-             , ("remainder", numericBinop rem)
+             , ("/", divBinop div)
+             , ("mod", divBinop mod)
+             , ("quotient", divBinop quot)
+             , ("remainder", divBinop rem)
              , ("=", numBoolBinop (==))
              , ("<", numBoolBinop (<))
              , (">", numBoolBinop (>))
@@ -64,6 +64,13 @@ numericBinop op params = Number . foldl1 op <$> mapM unpackNum params
 unpackNum :: LispVal -> ThrowsError Integer
 unpackNum (Number n) = return n
 unpackNum notNum = throwError $ TypeMismatch "number" notNum
+
+divBinop :: (Integer -> Integer -> Integer) -> [LispVal] -> ThrowsError LispVal
+divBinop op params = do
+  nums <- mapM unpackNum params
+  if any (== 0) (drop 1 nums)
+    then throwError $ Default "division by zero"
+    else numericBinop op params
 
 boolBinop :: (LispVal -> ThrowsError a) -> (a -> a -> Bool) -> [LispVal] -> ThrowsError LispVal
 boolBinop unpacker op [a, b] = do
