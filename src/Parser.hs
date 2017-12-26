@@ -14,9 +14,13 @@ spaces = skipMany1 space
 parseString :: Parser LispVal
 parseString = do
   _ <- char '"'
-  x <- many (noneOf "\"")
+  x <- many (escaped <|> noneOf "\"\\")
   _ <- char '"'
   return $ String x
+  where
+    escaped = char '\\' >> choice
+      [ char 'n' >> return '\n', char 't' >> return '\t'
+      , char '"' >> return '"', char '\\' >> return '\\' ]
 
 parseAtom :: Parser LispVal
 parseAtom = do
