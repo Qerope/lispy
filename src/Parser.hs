@@ -33,7 +33,10 @@ parseAtom = do
     _    -> Atom atom
 
 parseNumber :: Parser LispVal
-parseNumber = Number . read <$> many1 digit
+parseNumber = do
+  sign <- option "" (string "-")
+  digits <- many1 digit
+  return $ Number (read (sign ++ digits))
 
 parseList :: Parser LispVal
 parseList = List <$> sepBy parseExpr spaces
